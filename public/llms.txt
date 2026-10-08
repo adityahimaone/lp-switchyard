@@ -1,0 +1,63 @@
+# Switchyard
+
+> Switchyard is a control plane for coding agents. It stores kanban boards and tasks, claims each task with a single dispatcher, runs the executor on the machine that owns the source code, and holds every result in a review gate until a human approves the diff.
+
+Autonomy for your agents, control for you. Nothing an agent produces lands until you inspect and approve it.
+
+## What it is
+
+- **Control plane (VPS):** kanban boards backed by SQLite per board, one dispatcher polling every 30 seconds, and the review gate.
+- **Execution plane (workspace hosts):** node-agent runs on every Mac or Windows machine that owns source code. Remote workspaces are never used as `cwd` by local VPS processes.
+- **Transport:** gRPC preferred, HTTP long-poll fallback. `NODE_AGENT_TRANSPORT` accepts `auto`, `grpc` (fail-closed) or `http`.
+
+## Executors
+
+Tasks store human intent as a title and description. An executor is chosen only to force a specific runtime.
+
+| Executor | Route |
+| --- | --- |
+| `hermes` | node-agent on the workspace host |
+| `codex` | node-agent on the workspace host |
+| `claude` | node-agent on the workspace host |
+| `commandcode` | node-agent on the workspace host (runs with `--yolo`) |
+| `dsh` | node-agent on the workspace host |
+| `shell` | direct remote commands; the command is the only executed input |
+| `auto` | legacy SSH from the VPS, kept for backward compatibility |
+
+A node without the requested executor is rejected with `executor unavailable`.
+
+## Task lifecycle
+
+`triage → todo → scheduled → ready → running → blocked → review → done → archived`
+
+A successful run becomes `review`, never `done`. A plain status PATCH cannot move a task from `review` to `done`. Failures retry up to 3 times, then become `blocked`.
+
+## API
+
+- `GET / POST /api/boards` — boards and tasks
+- `PATCH /api/boards/{slug}/tasks/{id}/status` — status transitions
+- `PATCH /api/boards/{slug}/tasks/{id}/assignee` — change assignee
+- `GET /api/boards/{slug}/tasks/{id}/diff` — workspace diff
+- `POST /api/boards/{slug}/tasks/{id}/approve` — commit or push
+- `GET/POST/PUT/DELETE /api/workspaces*` — workspaces and health
+- `GET /api/flow/active` — active flow tasks
+- `POST /api/remote/dispatch` — manual dispatch
+- `GET /api/nodes` — node status
+
+All `/api/*` routes require the `kanban_session` HttpOnly cookie except the four `/api/auth/*` routes.
+
+## Deploying
+
+Roll out the VPS first. Mac and Windows agents keep their previous capabilities until you upgrade them.
+
+1. Build and restart node-agent server on the VPS (HTTP `:8788`, gRPC `:8789`).
+2. Build and restart kanban-board (Switchyard).
+3. Cross-build the worker binary (`GOOS=darwin GOARCH=arm64` for Apple Silicon).
+4. Reinstall the agent on Mac or Windows and restart the LaunchAgent or service.
+5. Confirm the node is `idle` and capability and `transports` show at `/api/nodes`.
+6. Run a dispatch canary: expect `success=true`, a `delivery_id`, and transport `grpc` (or fallback `http`).
+
+## Source
+
+- [Switchyard](https://github.com/adityahimaone/switchyard) — control plane, Go + SQLite, React + Vite board UI
+- [node-agent](https://github.com/adityahimaone/node-agent) — execution plane on workspace hosts

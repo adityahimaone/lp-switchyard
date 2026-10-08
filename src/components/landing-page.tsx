@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import Image from "next/image";
-import { LayoutGroup, motion, useInView, useReducedMotion } from "motion/react";
+import { LayoutGroup, motion, useInView, useMotionValue, useReducedMotion, useSpring, useTransform } from "motion/react";
 import {
-  AlertTriangle, ArrowRight, Check, CheckCircle2, ChevronDown, Copy, GitCommitHorizontal,
-  LockKeyhole, Monitor, Moon, Radio, RefreshCw, Route, Sun, Workflow,
+  AlertTriangle, ArrowRight, Check, CheckCircle2, ChevronDown, Copy, Github, GitCommitHorizontal,
+  LockKeyhole, Monitor, Moon, Radio, RefreshCw, Route, ShieldCheck, Sparkles, Sun, Terminal, Workflow,
 } from "lucide-react";
 
 const REPO = "https://github.com/adityahimaone/switchyard";
@@ -20,13 +20,9 @@ const statuses = [
   ["Review", "review", "filled"], ["Done", "done", "filled"], ["Archived", "archived", "hollow"],
 ] as const;
 
-const boardColumns = [
-  ["Ready", "ready"], ["Running", "running"], ["Blocked", "blocked"], ["Review", "review"], ["Done", "done"],
-] as const;
-
 function Reveal({ children, className = "", delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
   const reduced = useReducedMotion();
-  return <motion.div className={className} initial={reduced ? false : { opacity: 0, transform: "translateY(6px)" }} whileInView={{ opacity: 1, transform: "translateY(0px)" }} viewport={{ once: true, amount: 0.15 }} transition={{ duration: reduced ? 0 : 0.26, delay: reduced ? 0 : delay, ease: [0.23, 1, 0.32, 1] }}>{children}</motion.div>;
+  return <motion.div className={className} initial={reduced ? false : { opacity: 0, transform: "translateY(10px)" }} whileInView={{ opacity: 1, transform: "translateY(0px)" }} viewport={{ once: true, amount: 0.15, margin: "-60px" }} transition={{ duration: reduced ? 0 : 0.34, delay: reduced ? 0 : delay, ease: [0.16, 1, 0.3, 1] }}>{children}</motion.div>;
 }
 
 function Section({ id, title, lead, children }: { id: string; title: string; lead?: string; children: ReactNode }) {
@@ -211,12 +207,62 @@ function CodeBlock({ code, label }: { code: string; label?: string }) {
   return <div className="code-block">{label && <span className="copy-live">{label}</span>}<CopyButton value={code} /><pre className="mono" tabIndex={0}><code>{code}</code></pre></div>;
 }
 
-function LifecycleRail() {
+function LifecycleRail({ active }: { active: number }) {
   const railRef = useRef<HTMLDivElement>(null);
   const inView = useInView(railRef, { once: false, amount: 0.4 });
   const reduced = useReducedMotion();
-  return <div ref={railRef} className="status-rail" aria-label="Task status lifecycle">{statuses.map(([label, key, shape]) => <div className="status-step" key={key}><span className={`status-dot ${shape === "hollow" || shape === "dashed" ? shape : ""} ${shape === "pulse" && inView && !reduced ? "pulse" : ""}`} style={{ "--lamp": `var(--c-${key})` } as CSSProperties} /><span>{label}</span></div>)}</div>;
+  return <div ref={railRef} className="status-rail" aria-label="Task status lifecycle">{statuses.map(([label, key, shape], index) => <div className="status-step" key={key} data-active={!reduced && inView && index === active}><span className={`status-dot ${shape === "hollow" || shape === "dashed" ? shape : ""} ${shape === "pulse" && inView && !reduced ? "pulse" : ""}`} style={{ "--lamp": `var(--c-${key})` } as CSSProperties} /><span>{label}</span></div>)}</div>;
 }
+
+const reviewSteps = [
+  "The agent mutates the working tree but does not commit or push.",
+  "The board fetches the diff from the workspace host.",
+  <>You pick <strong>Commit</strong> or <strong>Commit &amp; Push</strong>.</>,
+  "The board runs approval over SSH.",
+  <>Status moves from <code className="mono">review</code> to <code className="mono">done</code>.</>,
+];
+
+function Lifecycle() {
+  const reduced = useReducedMotion();
+  const [active, setActive] = useState(0);
+  useEffect(() => {
+    if (reduced) return;
+    const timer = setInterval(() => setActive((value) => (value + 1) % statuses.length), 1300);
+    return () => clearInterval(timer);
+  }, [reduced]);
+  return <>
+    <Reveal className="lifecycle-console"><Tilt><AgentConsole /></Tilt></Reveal>
+    <Reveal><LifecycleRail active={active} /></Reveal>
+    <div className="lifecycle-layout">
+      <div className="lifecycle-steps">
+        {reviewSteps.map((text, index) => <Reveal className="lifecycle-step" delay={index * 0.05} key={index}><span className="step-number">{index + 1}</span><p>{text}</p></Reveal>)}
+      </div>
+      <Reveal className="lifecycle-evidence" delay={0.1}>
+        <CodeBlock code={`GET  /api/boards/{slug}/tasks/{id}/diff\nPOST /api/boards/{slug}/tasks/{id}/approve\n{"action": "commit", "message": "optional commit message"}`} label="Review gate API" />
+        <div className="diff-preview mono">
+          <div className="diff-line diff-line--add">+ assert.Equal(t, 429, resp.Code)</div>
+          <div className="diff-line diff-line--del">− assert.Equal(t, 200, resp.Code)</div>
+          <span className="diff-hold"><ShieldCheck size={13} aria-hidden="true" />awaiting human approval</span>
+        </div>
+      </Reveal>
+    </div>
+    <div className="guarantee-grid">{["Successful results become review, not done.", "A plain status PATCH cannot move a task from review to done.", "Failures retry up to 3 times, then become blocked.", "Shell tasks with an empty command are rejected up front."].map((text) => <div className="guarantee" key={text}><CheckCircle2 size={17} aria-hidden="true" /><span>{text}</span></div>)}</div>
+  </>;
+}
+
+const boardColumns = [
+  ["Ready", "ready"], ["Running", "running"], ["Blocked", "blocked"], ["Review", "review"], ["Done", "done"],
+] as const;
+
+const CONSOLE_LOG = [
+  { tone: "claim", text: "▸ claim task t1 · “Add rate-limit tests”" },
+  { tone: "plan", text: "✦ plan: read limiter.go → write table tests → run go test" },
+  { tone: "route", text: "→ dispatch via gRPC to mac-studio (owns /Users/dev/saas)" },
+  { tone: "run", text: "  ok  saas/limiter  0.412s  (+42 −7)" },
+  { tone: "gate", text: "\u23f8 held in REVIEW \u2014 waiting for a human to approve the diff" },
+] as const;
+
+const CONSOLE_HOLD = 1900;
 
 type CommitState = "idle" | "ready" | "done";
 
@@ -233,7 +279,7 @@ function TaskCard({
     style={{ "--lamp": `var(--c-${lamp})` } as CSSProperties}
   >
     <div className={`coupler${lamp === "running" ? " coupler-running" : ""}`} />
-    <h4>{title}</h4>
+    <p className="task-card-title">{title}</p>
     <p>{summary}</p>
     <div className="task-meta"><span>{executor}</span><span>{host}</span></div>
     {diff !== undefined && <div className="task-meta"><span className="diff-chip" data-shown={diff}>+42 −7</span></div>}
@@ -243,7 +289,7 @@ function TaskCard({
 
 const heroTask = { title: "Add rate-limit tests", summary: "cover validation edge cases", executor: "dsh", host: "Mac" };
 
-function HeroBoard() {
+function EngineeringBoard() {
   const prefersReduced = useReducedMotion();
   const [run, setRun] = useState(0);
   const [phase, setPhase] = useState(0);
@@ -285,12 +331,73 @@ function HeroBoard() {
     return index === columnForPhase ? movingCard : null;
   };
 
-  return <div className="hero-visual"><div className="board-frame glass" ref={frame} onPointerMove={onPointerMove}>
+  return <div className="board-frame glass-panel" ref={frame} onPointerMove={onPointerMove}>
     <div className="board-topline"><div><strong>Engineering board</strong><span className="footnote"> · Task flow preview</span></div><div className="board-controls"><span className="chip">one dispatcher</span><button className="replay" type="button" onClick={() => setRun((value) => value + 1)} aria-label="Replay task lifecycle animation"><RefreshCw size={13} />Replay</button></div></div>
     <div className="board-scroll" ref={scroller}><LayoutGroup id="hero-task"><div className="board-columns">
-      {boardColumns.map(([name, lamp], index) => <div className="board-column" key={name}><h3><span className="status-dot" style={{ "--lamp": `var(--c-${lamp})` } as CSSProperties} />{name}</h3>{cardFor(index)}</div>)}
+      {boardColumns.map(([name, lamp], index) => <div className="board-column" key={name}><p className="board-column-title"><span className="status-dot" style={{ "--lamp": `var(--c-${lamp})` } as CSSProperties} />{name}</p>{cardFor(index)}</div>)}
     </div></LayoutGroup></div>
-  </div></div>;
+  </div>;
+}
+
+function AgentConsole() {
+  const reduced = useReducedMotion();
+  const [step, setStep] = useState(1);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const settled = step > CONSOLE_LOG.length;
+
+  useEffect(() => {
+    if (reduced) { setStep(CONSOLE_LOG.length + 1); return; }
+    const timer = setTimeout(() => {
+      setStep((value) => (value >= CONSOLE_LOG.length + 2 ? 1 : value + 1));
+    }, step > CONSOLE_LOG.length ? CONSOLE_HOLD * 1.7 : CONSOLE_HOLD);
+    return () => clearTimeout(timer);
+  }, [step, reduced]);
+
+  // Follow the newest line on narrow screens, where the log scrolls.
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (body) body.scrollTop = body.scrollHeight;
+  }, [step]);
+
+  return <div className="console glass-strong">
+    <div className="console-bar">
+      <span className="console-dot" style={{ "--dot": "#ff5f57" } as CSSProperties} />
+      <span className="console-dot" style={{ "--dot": "#febc2e" } as CSSProperties} />
+      <span className="console-dot" style={{ "--dot": "#28c840" } as CSSProperties} />
+      <span className="console-title mono">switchyard · engineering board</span>
+      <span className="console-live mono"><span className="console-live-dot" data-settled={settled} />one dispatcher</span>
+    </div>
+    <div className="console-body mono" ref={bodyRef} aria-hidden="true">
+      {CONSOLE_LOG.slice(0, step).map((line) => <motion.div key={line.tone} className={`console-line console-line--${line.tone}`} initial={reduced ? false : { opacity: 0, transform: "translateX(-8px)" }} animate={{ opacity: 1, transform: "translateX(0px)" }} transition={{ duration: reduced ? 0 : 0.24, ease: [0.16, 1, 0.3, 1] }}>{line.text}</motion.div>)}
+      <span className="console-caret" />
+    </div>
+    <p className="copy-live" role="status">{settled ? "Task held in review, waiting for approval." : "Task running."}</p>
+  </div>;
+}
+
+function Tilt({ children, className = "" }: { children: ReactNode; className?: string }) {
+  const reduced = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  const pointerX = useMotionValue(0);
+  const pointerY = useMotionValue(0);
+  const springX = useSpring(pointerX, { stiffness: 80, damping: 20 });
+  const springY = useSpring(pointerY, { stiffness: 80, damping: 20 });
+  const rotateX = useTransform(springY, [-1, 1], [4, -4]);
+  const rotateY = useTransform(springX, [-1, 1], [-5, 5]);
+
+  return <div
+    ref={ref}
+    className={className}
+    onPointerMove={(event) => {
+      if (reduced || event.pointerType !== "mouse" || !ref.current) return;
+      const rect = ref.current.getBoundingClientRect();
+      pointerX.set(((event.clientX - rect.left) / rect.width) * 2 - 1);
+      pointerY.set(((event.clientY - rect.top) / rect.height) * 2 - 1);
+    }}
+    onPointerLeave={() => { pointerX.set(0); pointerY.set(0); }}
+  >
+    <motion.div style={reduced ? undefined : { rotateX, rotateY, transformPerspective: 1200 }}>{children}</motion.div>
+  </div>;
 }
 
 function Architecture() {
@@ -361,7 +468,21 @@ function CodeTabs() {
 
 function TransportToy() {
   const [grpc, setGrpc] = useState(true);
-  return <div className="transport-toy glass-panel"><div className="board-topline"><strong>Worker connection</strong><span className="chip">Illustration · <code className="mono">{grpc ? "grpc" : "http"}</code></span></div><div className={`lane${grpc ? " active" : ""}`}><Radio size={17} /><code className="mono">gRPC stream</code><span className="lane-line" /><span>{grpc ? "active" : "available"}</span></div><div className={`lane${!grpc ? " active" : ""}`}><Route size={17} /><code className="mono">HTTP long-poll</code><span className="lane-line" /><span>{grpc ? "fallback" : "active"}</span></div><button className="button button-secondary transport-toggle" onClick={() => setGrpc(!grpc)} type="button"><RefreshCw size={15} />{grpc ? "Simulate drop" : "Restore gRPC"}</button><p className="footnote">Client-side illustration only. No network calls.</p></div>;
+  const fastLane = useRef<HTMLSpanElement>(null);
+  const slowLane = useRef<HTMLSpanElement>(null);
+  // The packet travels the full track, so its distance comes from the measured line.
+  useEffect(() => {
+    const measure = () => {
+      for (const ref of [fastLane, slowLane]) {
+        const el = ref.current;
+        if (el) el.style.setProperty("--lane-w", `${el.clientWidth}px`);
+      }
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+  return <div className="transport-toy glass-panel"><div className="board-topline"><strong>Worker connection</strong><span className="chip">Illustration · <code className="mono">{grpc ? "grpc" : "http"}</code></span></div><div className={`lane${grpc ? " active" : ""}`}><Radio size={17} /><code className="mono">gRPC stream</code><span className="lane-line" ref={grpc ? fastLane : slowLane}><span className="lane-packet" style={{ "--packet-dur": grpc ? "1.2s" : "3.2s" } as CSSProperties} /></span><span>{grpc ? "active" : "available"}</span></div><div className={`lane${!grpc ? " active" : ""}`}><Route size={17} /><code className="mono">HTTP long-poll</code><span className="lane-line" ref={grpc ? slowLane : fastLane}><span className="lane-packet" style={{ "--packet-dur": grpc ? "3.2s" : "1.2s" } as CSSProperties} /></span><span>{grpc ? "fallback" : "active"}</span></div><button className="button button-secondary transport-toggle" onClick={() => setGrpc(!grpc)} type="button"><RefreshCw size={15} />{grpc ? "Simulate drop" : "Restore gRPC"}</button><p className="footnote">Client-side illustration only. No network calls.</p></div>;
 }
 
 const executors = [
@@ -371,6 +492,18 @@ const executors = [
   ["commandcode", "CommandCode on the workspace host."],
   ["dsh", "DSH CLI on the workspace host."],
   ["shell", "Direct remote commands; command is the only executed input."],
+] as const;
+
+const apiRoutes = [
+  ["GET / POST", "/api/boards", "Boards and tasks"],
+  ["PATCH", "/api/boards/{slug}/tasks/{id}/status", "Status transitions"],
+  ["PATCH", "/api/boards/{slug}/tasks/{id}/assignee", "Change assignee"],
+  ["GET", "/api/boards/{slug}/tasks/{id}/diff", "Workspace diff"],
+  ["POST", "/api/boards/{slug}/tasks/{id}/approve", "Commit or push"],
+  ["GET/POST/PUT/DELETE", "/api/workspaces*", "Workspaces and health"],
+  ["GET", "/api/flow/active", "Active flow tasks"],
+  ["POST", "/api/remote/dispatch", "Manual dispatch"],
+  ["GET", "/api/nodes", "Node status"],
 ] as const;
 
 const faqs = [
@@ -398,22 +531,33 @@ export default function LandingPage() {
     <a className="skip-link" href="#main">Skip to content</a><div className="glow-field" aria-hidden="true"><span className="glow-orb glow-orb--blue" /><span className="glow-orb glow-orb--violet" /><span className="glow-orb glow-orb--cyan" /></div>
     <SiteHeader />
     <main id="main">
-      <section className="hero page-shell" aria-labelledby="hero-title">
-        <div className="hero-copy"><p className="eyebrow">Control plane for coding agents</p><h1 id="hero-title">Queue tasks. Dispatch to the machine that owns the code.</h1></div>
-        <div className="hero-aside"><p className="hero-lead">Nothing lands until you review the diff. Switchyard stores boards and tasks, claims them with a single dispatcher, runs them on the machine that owns your code, and holds every result in review until you inspect and approve it.</p><div className="hero-actions"><a className="button button-primary" href={REPO} target="_blank" rel="noreferrer">View on GitHub <ArrowRight size={16} /></a><a className="button-link" href="#architecture">Read the architecture <ArrowRight size={15} /></a></div><div className="hero-meta" aria-label="Technology stack"><span className="chip mono">Go</span><span className="chip mono">SQLite</span><span className="chip mono">React + Vite</span><span className="chip mono">gRPC with HTTP fallback</span></div></div>
-        <HeroBoard />
+      <section className="hero page-shell" aria-labelledby="hero-title" itemScope itemType="https://schema.org/SoftwareApplication">
+        <div className="hero-copy">
+          <p className="hero-badge"><Sparkles size={13} aria-hidden="true" />The control plane for coding agents<span className="hero-badge-tag mono">human-in-the-loop</span></p>
+          <h1 id="hero-title" className="hero-title">Let AI write the code. <span className="text-gradient">You approve what ships.</span></h1>
+        </div>
+        <div className="hero-aside">
+          <p className="hero-lead">Queue tasks, dispatch them to the machine that owns your code, and let Claude, Codex or Hermes do the work. Every diff is held in review until you inspect and approve it. Autonomy for your agents, control for you.</p>
+          <div className="hero-actions"><a className="button button-primary hero-cta" href={REPO} target="_blank" rel="noreferrer"><Github size={16} />View on GitHub <ArrowRight size={15} /></a><a className="button button-secondary" href="#architecture">Read the architecture</a></div>
+          <ul className="hero-meta mono" aria-label="Technology stack">{["Go", "SQLite", "React + Vite", "gRPC with HTTP fallback"].map((item) => <li key={item}>{item}</li>)}</ul>
+        </div>
+        <EngineeringBoard />
       </section>
-      <div className="page-shell"><div className="problem-strip" aria-label="Why Switchyard exists"><article className="problem-item"><Monitor className="problem-icon" size={20} /><div><strong>Agents run where the code lives.</strong><p>Your repo is on a Mac or Windows box, not on the server running the scheduler.</p></div></article><article className="problem-item"><GitCommitHorizontal className="problem-icon" size={20} /><div><strong>Agents shouldn’t commit on their own.</strong><p>A passing run still needs a human look at the diff.</p></div></article><article className="problem-item"><Workflow className="problem-icon" size={20} /><div><strong>One dispatcher, one queue.</strong><p>Two schedulers claiming the same task is a bug, not a feature.</p></div></article></div></div>
+      <div className="page-shell"><div className="principle-grid" aria-label="Why Switchyard exists">{[
+        { icon: Monitor, title: "Agents run where the code lives.", body: "Your repo sits on a Mac or Windows box. Switchyard routes the agent to that host instead of dragging your source to a server.", wide: true },
+        { icon: GitCommitHorizontal, title: "Agents shouldn’t commit on their own.", body: "A passing run still needs a human look at the diff.", wide: false },
+        { icon: Workflow, title: "One dispatcher, one queue.", body: "Two schedulers claiming the same task is a bug, not a feature.", wide: false },
+      ].map(({ icon: Icon, title, body, wide }, index) => <Reveal key={title} className={`principle${wide ? " principle--wide" : ""}`} delay={index * 0.06}><span className="principle-icon"><Icon size={19} aria-hidden="true" /></span><h2 className="principle-title">{title}</h2><p>{body}</p></Reveal>)}</div></div>
       <Section id="architecture" title="Two planes, one queue" lead="The VPS runs the control plane. Node-agent runs the execution plane on every host that owns source code. Remote workspaces are never used as cwd by local VPS processes."><Architecture /></Section>
-      <Section id="lifecycle" title="Success lands in review, never in done" lead="Every executor goes through the same gate."><Reveal><LifecycleRail /></Reveal><div className="stepper-wrap"><div className="stepper">{["Agent mutates the working tree but does not commit or push.", "Board fetches the diff from the workspace host.", <>You pick <strong>Commit</strong> or <strong>Commit &amp; Push</strong>.</>, "Board runs approval over SSH.", <>Status moves from <code className="mono">review</code> to <code className="mono">done</code>.</>].map((text, index) => <Reveal className="step-card" delay={index * 0.04} key={index}><span className="step-number">{index + 1}</span><p>{text}</p></Reveal>)}</div></div><div className="guarantee-grid">{["Successful results become review, not done.", "A plain status PATCH cannot move a task from review to done.", "Failures retry up to 3 times, then become blocked.", "Shell tasks with an empty command are rejected up front."].map((text) => <div className="guarantee" key={text}><CheckCircle2 size={17} /><span>{text}</span></div>)}</div><CodeBlock code={`GET  /api/boards/{slug}/tasks/{id}/diff\nPOST /api/boards/{slug}/tasks/{id}/approve\n{"action": "commit", "message": "optional commit message"}`} label="Review gate API" /></Section>
-      <Section id="executors" title="Pick a runtime only when you need to" lead="Tasks store human intent as a title and description. Choose an executor only to force a specific runtime. Every executor below runs through node-agent on the workspace host."><div className="executor-grid">{executors.map(([name, description]) => <article className="executor-card" key={name}><h3>{name}</h3><p>{description}</p></article>)}<article className="executor-card executor-card--legacy"><h3>auto</h3><span className="mono">legacy · SSH from the VPS</span><p>Hermes on the VPS, file access over SSH. Kept for backward compatibility.</p></article></div><div className="warning-note"><AlertTriangle size={18} /><span>CommandCode runs with <code className="mono">--yolo</code>, which lets the worker edit files and run shell commands. Use it only on trusted nodes.</span></div><div className="match-demo"><div><p>Node capabilities</p><span className="chip mono">hermes · codex · claude · commandcode · dsh · shell</span></div><ArrowRight className="problem-icon" size={19} aria-hidden="true" /><div><p>Request</p><span className="chip mono">dsh</span><span className="footnote">The server picks a node by workspace prefix plus executor capability. A node without that executor is rejected with <code className="mono">executor unavailable</code>.</span></div></div></Section>
+      <Section id="lifecycle" title="Success lands in review, never in done" lead="Every executor goes through the same gate."><Lifecycle /></Section>
+      <Section id="executors" title="Pick a runtime only when you need to" lead="Tasks store human intent as a title and description. Choose an executor only to force a specific runtime. Every executor below runs through node-agent on the workspace host."><div className="executor-marquee"><div className="executor-track">{[0, 1].map((pass) => <div className="executor-set" key={pass} aria-hidden={pass === 1}>{executors.map(([name, description]) => <article className="executor-card" key={name}><Terminal className="executor-icon" size={16} aria-hidden="true" />{pass === 0 ? <h3>{name}</h3> : <p className="executor-name mono">{name}</p>}<p>{description}</p></article>)}</div>)}</div></div><p className="executor-legacy"><code className="mono">auto</code> still routes through legacy SSH from the VPS for backward compatibility.</p><div className="warning-note"><AlertTriangle size={18} /><span>CommandCode runs with <code className="mono">--yolo</code>, which lets the worker edit files and run shell commands. Use it only on trusted nodes.</span></div><div className="match-demo"><div><p>Node capabilities</p><span className="chip mono">hermes · codex · claude · commandcode · dsh · shell</span></div><ArrowRight className="problem-icon" size={19} aria-hidden="true" /><div><p>Request</p><span className="chip mono">dsh</span><span className="footnote">The server picks a node by workspace prefix plus executor capability. A node without that executor is rejected with <code className="mono">executor unavailable</code>.</span></div></div></Section>
       <Section id="transport" title="gRPC when it’s up, HTTP when it isn’t" lead="Node-agent prefers gRPC and falls back to HTTP long-poll when the stream drops. Operators can see which path a task took."><div className="transport-layout"><TransportToy /><div><table className="config-table"><thead><tr><th>Setting</th><th>Meaning</th></tr></thead><tbody><tr><td><code className="mono">NODE_AGENT_TRANSPORT=auto</code></td><td>gRPC preferred, HTTP fallback</td></tr><tr><td><code className="mono">NODE_AGENT_TRANSPORT=grpc</code></td><td>Fail-closed when gRPC is unavailable</td></tr><tr><td><code className="mono">NODE_AGENT_TRANSPORT=http</code></td><td>Forces the compatibility lane</td></tr></tbody></table><span className="security-chip"><LockKeyhole size={14} />Keep gRPC port <code className="mono">8789</code> private on the tailnet. Tailscale connects VPS and workers.</span></div></div></Section>
       <Section id="context" title="Less context in, less noise out" lead="Three layers keep agent prompts and shell output small."><div className="context-grid">{[["codegraph", "Structural index of the codebase on the workspace host.", "Used for hermes, codex and commandcode."], ["rtk", "Shortens verbose shell commands and output within bounded timeouts.", "800 ms hook check/rewrite · 2 s --ultra-compact cap"], ["caveman", "Optional compact output for shell over 8 KiB, with fail-open behavior.", "NODE_AGENT_SHELL_CAVEMAN=1"]].map(([name, text, detail]) => <Reveal key={name} className="context-card"><h3>{name}</h3><p>{text}</p><span className="mono">{detail}</span></Reveal>)}</div><p className="footnote">Shell tasks skip AGENTS/README/codegraph prompt injection by default.</p></Section>
-      <Section id="api" title="A small, boring API" lead="A compact surface for boards, tasks, workspaces, flow and remote dispatch."><div className="api-layout"><div><div className="api-table-wrap"><table className="api-table"><thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead><tbody>{[["GET / POST", "/api/boards", "Boards and tasks"], ["PATCH", "/api/boards/{slug}/tasks/{id}/status", "Status transitions"], ["PATCH", "/api/boards/{slug}/tasks/{id}/assignee", "Change assignee"], ["GET", "/api/boards/{slug}/tasks/{id}/diff", "Workspace diff"], ["POST", "/api/boards/{slug}/tasks/{id}/approve", "Commit or push"], ["GET/POST/PUT/DELETE", "/api/workspaces*", "Workspaces and health"], ["GET", "/api/flow/active", "Active flow tasks"], ["POST", "/api/remote/dispatch", "Manual dispatch"], ["GET", "/api/nodes", "Node status"]].map(([method, path, purpose]) => <tr key={path}><td className="mono">{method}</td><td className="mono" data-purpose={purpose}>{path}</td><td>{purpose}</td></tr>)}</tbody></table></div><p className="footnote">All <code className="mono">/api/*</code> routes require the <code className="mono">kanban_session</code> HttpOnly cookie except the four <code className="mono">/api/auth/*</code> routes.</p></div><CodeTabs /></div></Section>
+      <Section id="api" title="A small, boring API" lead="A compact surface for boards, tasks, workspaces, flow and remote dispatch."><div className="api-layout"><div><ul className="api-list">{apiRoutes.map(([method, path, purpose]) => <li className="api-row" key={path}><span className="api-method mono">{method}</span><span className="api-path mono">{path}</span><span className="api-purpose">{purpose}</span></li>)}</ul><p className="footnote">All <code className="mono">/api/*</code> routes require the <code className="mono">kanban_session</code> HttpOnly cookie except the four <code className="mono">/api/auth/*</code> routes.</p></div><CodeTabs /></div></Section>
       <Section id="deploy" title="Roll out the VPS first" lead="Mac and Windows agents keep running with their previous capabilities until you upgrade them."><div className="deploy-layout"><div className="timeline-wrap"><ol className="timeline">{[<>Build and restart node-agent server on the VPS (HTTP <code className="mono">:8788</code>, gRPC <code className="mono">:8789</code>).</>, "Build and restart kanban-board (Switchyard).", <>Cross-build the worker binary (<code className="mono">GOOS=darwin GOARCH=arm64</code> for Apple Silicon).</>, "Reinstall the agent on Mac or Windows and restart the LaunchAgent or service.", <>Confirm node is <code className="mono">idle</code> and capability and <code className="mono">transports</code> show at <code className="mono">/api/nodes</code>.</>, <>Run a dispatch canary: expect <code className="mono">success=true</code>, a <code className="mono">delivery_id</code>, and transport <code className="mono">grpc</code> (or fallback <code className="mono">http</code>).</>].map((text, index) => <li key={index}><p>{text}</p></li>)}</ol></div><div><CodeBlock code={`go vet ./...\ngo test ./...\ngo build -o bin/kanban-board ./cmd/server\ncd web && pnpm build\npm2 restart kanban-board`} label="Build and deploy commands" /><div className="fact-card">Production serves static <code className="mono">web/dist</code> from the Go binary; no Node or Bun runtime stays alive.</div><div className="fact-card">Frontend builds are RAM-heavy on a 2 GB VPS.</div></div></div></Section>
       <Section id="faq" title="Questions about the review gate"><div className="faq-panel glass" onKeyDown={handleFaqKeyDown}>{faqs.map(([question, answer], index) => <div className="faq-item" key={question}><h3 style={{ margin: 0, fontSize: "inherit", fontWeight: "inherit" }}><button id={`faq-button-${index}`} className="faq-question" type="button" aria-expanded={openFaq === index} aria-controls={`faq-panel-${index}`} onClick={() => setOpenFaq(openFaq === index ? null : index)}>{question}<ChevronDown size={17} aria-hidden="true" /></button></h3><div className="faq-answer-wrap" data-open={openFaq === index}><div id={`faq-panel-${index}`} className="faq-answer" role="region" aria-labelledby={`faq-button-${index}`} aria-hidden={openFaq !== index} inert={openFaq !== index}><p>{answer}</p></div></div></div>)}</div></Section>
-      <section className="page-shell final-cta glass" aria-labelledby="final-title"><div className="mascot-mark"><Image src="/brand/mascot-switchyard.png" width={120} height={120} alt="Switchyard mascot" /></div><h2 id="final-title">Put a gate in front of your agents</h2><p>Control plane in Go, execution plane in node-agent.</p><div className="final-actions"><a className="button button-primary" href={REPO} target="_blank" rel="noreferrer">View on GitHub <ArrowRight size={16} /></a><a className="button button-secondary" href={NODE_AGENT} target="_blank" rel="noreferrer">node-agent repo</a></div></section>
+      <section className="page-shell final-cta glass" aria-labelledby="final-title"><div className="mascot-mark"><Image src="/brand/mascot-switchyard.png" width={120} height={120} alt="" aria-hidden="true" priority={false} /></div><h2 id="final-title">Put a gate in front of your agents</h2><p>Control plane in Go, execution plane in node-agent.</p><div className="final-actions"><a className="button button-primary" href={REPO} target="_blank" rel="noreferrer">View on GitHub <ArrowRight size={16} /></a><a className="button button-secondary" href={NODE_AGENT} target="_blank" rel="noreferrer">node-agent repo</a></div></section>
     </main>
-    <footer className="site-footer page-shell"><a className="brand" href="#main"><LogoMark size={22} /><span>Switchyard</span></a><span>Part of a two-repo system</span><nav className="footer-links" aria-label="Related links"><a href={REPO} target="_blank" rel="noreferrer">Switchyard</a><a href={NODE_AGENT} target="_blank" rel="noreferrer">node-agent</a><a href={`${REPO}/blob/main/design.md`} target="_blank" rel="noreferrer">Design spec</a><a href="https://commandcode.ai/docs/headless" target="_blank" rel="noreferrer">CommandCode headless docs</a><a href="https://github.com/rtk-ai/rtk" target="_blank" rel="noreferrer">RTK</a><a href="https://github.com/JuliusBrussee/caveman" target="_blank" rel="noreferrer">Caveman</a></nav><ThemeSwitch /></footer>
+    <footer className="site-footer page-shell"><a className="brand" href="#main"><LogoMark size={22} /><span>Switchyard</span></a><nav className="footer-links" aria-label="Related links"><a href={REPO} target="_blank" rel="noreferrer">Switchyard</a><a href={NODE_AGENT} target="_blank" rel="noreferrer">node-agent</a><a href={`${REPO}/blob/main/design.md`} target="_blank" rel="noreferrer">Design spec</a><a href="https://commandcode.ai/docs/headless" target="_blank" rel="noreferrer">CommandCode headless docs</a><a href="https://github.com/rtk-ai/rtk" target="_blank" rel="noreferrer">RTK</a><a href="https://github.com/JuliusBrussee/caveman" target="_blank" rel="noreferrer">Caveman</a></nav><ThemeSwitch /><span className="footer-note">Part of a two-repo system · Switchyard is the control plane, node-agent is the execution plane.</span></footer>
   </>;
 }

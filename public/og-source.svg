@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Switchyard — a gate in front of your coding agents">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#f2f4fd"/><stop offset="1" stop-color="#e6ebfa"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5">
+      <stop stop-color="#6689ff" stop-opacity=".34"/><stop offset="1" stop-color="#6689ff" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#2f57c4" stroke-opacity=".07" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#0f172a"/><stop offset=".62" stop-color="#2f57c4"/><stop offset="1" stop-color="#8b7bff"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <ellipse cx="880" cy="120" rx="420" ry="300" fill="url(#glow)"/>
+
+  <g transform="translate(84 74)">
+    <rect width="46" height="46" rx="12" fill="#2563eb"/>
+    <path d="M31 15c0-3-3.4-5-10.3-5-7.4 0-10.9 2.3-10.9 5.6 0 2.6 2.4 4 5.4 4.7l7.4 1.6c1.6.4 2.4.9 2.4 1.7 0 1.1-1.4 1.8-4 1.8-3.3 0-4.7-.9-4.7-2.6h-6.2c0 4.6 3.7 7.7 10.9 7.7 6.9 0 10.6-2.6 10.6-6.4 0-3-2.3-4.4-6.2-5.2l-6.8-1.4c-1.7-.4-2.5-.8-2.5-1.6 0-1 1.3-1.7 3.9-1.7 2.9 0 4.3.8 4.3 2.4z" fill="#fff"/>
+    <text x="62" y="32" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Switchyard</text>
+  </g>
+
+  <text x="84" y="236" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="700" fill="url(#accent)">Let AI write the code.</text>
+  <text x="84" y="304" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="700" fill="url(#accent)">You approve what ships.</text>
+
+  <text x="84" y="364" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#4d4c63">Queue tasks, dispatch to the machine that owns the code,</text>
+  <text x="84" y="394" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#4d4c63">and hold every diff in review until you approve it.</text>
+
+  <g font-family="Menlo, Consolas, monospace" font-size="17" fill="#4d4c63">
+    <rect x="84" y="452" width="150" height="42" rx="21" fill="#fff" stroke="#c7cee0"/>
+    <text x="116" y="479">Go</text>
+    <rect x="246" y="452" width="176" height="42" rx="21" fill="#fff" stroke="#c7cee0"/>
+    <text x="278" y="479">SQLite</text>
+    <rect x="434" y="452" width="222" height="42" rx="21" fill="#fff" stroke="#c7cee0"/>
+    <text x="466" y="479">React + Vite</text>
+    <rect x="668" y="452" width="326" height="42" rx="21" fill="#fff" stroke="#c7cee0"/>
+    <text x="700" y="479">gRPC + HTTP fallback</text>
+  </g>
+
+  <g transform="translate(742 168)">
+    <rect width="374" height="278" rx="20" fill="#fff" stroke="#c7cee0" stroke-width="1.5"/>
+    <circle cx="26" cy="28" r="7" fill="#e05252"/>
+    <circle cx="48" cy="28" r="7" fill="#e0a952"/>
+    <circle cx="70" cy="28" r="7" fill="#3fae6a"/>
+    <text x="94" y="34" font-family="Menlo, Consolas, monospace" font-size="15" fill="#565a6b">review gate</text>
+
+    <rect x="24" y="62" width="326" height="72" rx="12" fill="#f2f4fd" stroke="#e0e5f2"/>
+    <text x="44" y="92" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="600" fill="#0f172a">Add rate-limit tests</text>
+    <text x="44" y="116" font-family="Menlo, Consolas, monospace" font-size="14" fill="#565a6b">dsh · mac-studio</text>
+
+    <rect x="24" y="150" width="326" height="60" rx="12" fill="#f3faf6" stroke="#bfe3ce"/>
+    <text x="44" y="175" font-family="Menlo, Consolas, monospace" font-size="14" fill="#1f7f57">+ assert.Equal(t, 429, resp.Code)</text>
+    <text x="44" y="196" font-family="Menlo, Consolas, monospace" font-size="14" fill="#cf3d3d">− assert.Equal(t, 200, resp.Code)</text>
+
+    <rect x="24" y="224" width="200" height="34" rx="17" fill="#f0eafb"/>
+    <text x="42" y="246" font-family="Menlo, Consolas, monospace" font-size="14" fill="#7443c9">awaiting human approval</text>
+  </g>
+</svg>
