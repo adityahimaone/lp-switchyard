@@ -20,7 +20,13 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = { colorScheme: "light dark" };
+export const viewport: Viewport = {
+  colorScheme: "light dark",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f2f4fd" },
+    { media: "(prefers-color-scheme: dark)", color: "#101319" },
+  ],
+};
 
 const themeScript = `(() => { try { const value = localStorage.getItem('switchyard-theme') || 'system'; const dark = value === 'dark' || (value === 'system' && matchMedia('(prefers-color-scheme: dark)').matches); document.documentElement.dataset.theme = dark ? 'dark' : 'light'; document.documentElement.dataset.themeMode = value; } catch { document.documentElement.dataset.theme = 'light'; } })()`;
 const sourceCode = {
@@ -35,7 +41,7 @@ const sourceCode = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" data-theme="light" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(sourceCode) }} />
