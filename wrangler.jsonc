@@ -1,0 +1,36 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "switchyard-landing",
+  "compatibility_date": "2025-10-08",
+  "assets": {
+    "directory": "./out",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  // Static export (next.config.ts: output: "export") — no worker script at all,
+  // Cloudflare serves ./out directly as a static assets Worker.
+  //
+  // Plain routes, deliberately NOT `custom_domain: true`. The zone already has
+  // an apex A record, and the custom-domain API refuses those with error 100117
+  // ("hostname already has externally managed DNS records"). A route layers on
+  // top of the existing proxied record instead. Traffic only reaches the worker
+  // while the hostname is proxied (orange cloud) at Cloudflare.
+  //
+  // Routes carry { pattern, zone_name } only — the script name is implied by the
+  // worker's own name.
+  "routes": [
+    {
+      "pattern": "switchyardbase.space/*",
+      "zone_name": "switchyardbase.space"
+    },
+    {
+      "pattern": "www.switchyardbase.space/*",
+      "zone_name": "switchyardbase.space"
+    }
+  ],
+  // Keeps the workers.dev URL alive as a fallback if zone routing breaks.
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  }
+}

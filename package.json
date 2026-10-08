@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "preview": "wrangler dev",
+    "deploy": "next build && wrangler deploy",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit"
   },
